@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 import os
+import csv
 import tensorflow as tf
 from handshape_feature_extractor import HandShapeFeatureExtractor
 from frameextractor import frameExtractor
@@ -110,21 +111,6 @@ def generate_test_penultimate_layer(test_videos_path, output_path):
     else:
         return None, None
 
-if __name__ == "__main__":
-    training_videos_path = "traindata"
-    output_path = "trainoutput"
-    training_features, video_names = generate_training_penultimate_layer(training_videos_path, output_path)
-    
-    test_videos_path = "test"
-    test_output_path = "testoutput"
-    test_features, test_video_names = generate_test_penultimate_layer(test_videos_path, test_output_path)
-    
-    if training_features is not None and test_features is not None:
-        results = gesture_recognition(test_features, test_video_names, training_features, video_names, test_output_path)
-
-# =============================================================================
-# Recognize the gesture (use cosine similarity for comparing the vectors)
-# =============================================================================
 
 def gesture_recognition(test_features, test_video_names, training_features, training_video_names, output_path):
     def cosine_similarity(vec1, vec2):
@@ -154,4 +140,23 @@ def gesture_recognition(test_features, test_video_names, training_features, trai
             writer.writerow([pred_label])
     
     return results
+
+    
+if __name__ == "__main__":
+    training_videos_path = "traindata"
+    output_path = "trainoutput"
+    training_features, video_names = generate_training_penultimate_layer(training_videos_path, output_path)
+    
+    test_videos_path = "test"
+    test_output_path = "testoutput"
+    test_features, test_video_names = generate_test_penultimate_layer(test_videos_path, test_output_path)
+    
+    if training_features is not None and test_features is not None:
+        results = gesture_recognition(test_features, test_video_names, training_features, video_names, test_output_path)
+
+# =============================================================================
+# Recognize the gesture (use cosine similarity for comparing the vectors)
+# =============================================================================
+
+
 

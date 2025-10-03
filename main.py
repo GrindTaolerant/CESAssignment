@@ -150,9 +150,8 @@ if __name__ == "__main__":
     test_videos_path = "test"
     test_output_path = "testoutput"
     test_features, test_video_names = generate_test_penultimate_layer(test_videos_path, test_output_path)
-    
-    if training_features is not None and test_features is not None:
-        results = gesture_recognition(test_features, test_video_names, training_features, video_names, test_output_path)
+       
+    results = gesture_recognition(test_features, test_video_names, training_features, video_names, test_output_path)
 
 # =============================================================================
 # Recognize the gesture (use cosine similarity for comparing the vectors)

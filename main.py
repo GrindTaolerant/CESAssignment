@@ -1,161 +1,153 @@
 # -*- coding: utf-8 -*-
+"""
+Created on Thu Jan 28 00:44:25 2021
 
+@author: chakati
+"""
 import cv2
+import pandas as pd
 import numpy as np
 import os
-import csv
 import tensorflow as tf
-from handshape_feature_extractor import HandShapeFeatureExtractor
 from frameextractor import frameExtractor
+from handshape_feature_extractor import HandShapeFeatureExtractor
+from sklearn.metrics.pairwise import cosine_similarity
 
-def generate_training_penultimate_layer(training_videos_path, output_path):
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    
-    frames_dir = os.path.join(output_path, "extracted_frames")
-    if not os.path.exists(frames_dir):
-        os.makedirs(frames_dir)
-    
-    feature_extractor = HandShapeFeatureExtractor.get_instance()
-    training_features = []
-    video_names = []
-    video_files = []
-    
-    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv']
-     
-    if os.path.exists(training_videos_path):
-        for file in os.listdir(training_videos_path):
-            if any(file.lower().endswith(ext) for ext in video_extensions):
-                video_files.append(file)
+## import the handfeature extractor class
 
-    for i, video_file in enumerate(video_files):
-        video_path = os.path.join(training_videos_path, video_file)
-         
-        try:
-            frameExtractor(video_path, frames_dir, i)
-            frame_filename = f"{i+1:05d}.png"
-            frame_path = os.path.join(frames_dir, frame_filename)
+# =============================================================================
+# Get the penultimate layer for trainig data
+# =============================================================================
+# your code goes here
+# Extract the middle frame of each gesture video
+
+TRAIN_DATA_PATH = "traindata"
+FRAMES_PATH = "trainframes"
+OUTPUT_FILE = "train_vectors.npy"
+
+TEST_DATA_PATH = "test"
+TEST_FRAMES_PATH = "testframes"
+TEST_OUTPUT_FILE = "test_vectors.npy"
+
+gesture_to_label = {
+    "0": 0, "1": 1, "2": 2, "3": 3, "4": 4,
+    "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
+    "DecreaseFanSpeed": 10,
+    "FanOff": 11,
+    "FanOn": 12,
+    "IncreaseFanSpeed": 13,
+    "LightOff": 14,
+    "LightOn": 15,
+    "SetThermo": 16
+}
+
+def clean_gesture_name(filename):
+    base = os.path.splitext(filename)[0] 
+    if base.startswith("H-"):
+        base = base[2:]  
+    return base
+
+
+def generate_train_penultimate_layer():
+    if not os.path.exists(FRAMES_PATH):
+        os.mkdir(FRAMES_PATH)
+
+    extractor = HandShapeFeatureExtractor.get_instance()
+    feature_vectors = []
+    count = 0
+    for filename in os.listdir(TRAIN_DATA_PATH):
+        if filename.endswith(".mp4"): 
+            count += 1
+            video_path = os.path.join(TRAIN_DATA_PATH, filename)
             
-            if os.path.exists(frame_path):
-                frame = cv2.imread(frame_path)
-                
-                if frame is not None:   
-                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    features = feature_extractor.extract_feature(gray_frame)
-                    flattened_features = features.flatten()
-                    training_features.append(flattened_features)
-                    video_names.append(video_file)
-                    
-        except Exception as e:
-            continue
-    
-    if training_features:
-        training_features_array = np.array(training_features)
-        features_file = os.path.join(output_path, "training_penultimate_layer.npy")
-        names_file = os.path.join(output_path, "training_video_names.npy")
-        np.save(features_file, training_features_array)
-        np.save(names_file, np.array(video_names))
-        return training_features_array, video_names
-    else:
-        return None, None
-
-def generate_test_penultimate_layer(test_videos_path, output_path):
-
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    
-    frames_dir = os.path.join(output_path, "extracted_test_frames")
-    if not os.path.exists(frames_dir):
-        os.makedirs(frames_dir)
-    
-    feature_extractor = HandShapeFeatureExtractor.get_instance()
-    test_features = []
-    video_names = []
-    
-    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv']
-    video_files = []
-    
-    if os.path.exists(test_videos_path):
-        for file in os.listdir(test_videos_path):
-            if any(file.lower().endswith(ext) for ext in video_extensions):
-                video_files.append(file)
-    
-    for i, video_file in enumerate(video_files):
-        video_path = os.path.join(test_videos_path, video_file)
-        
-        try:
-            frameExtractor(video_path, frames_dir, i)
-            frame_filename = f"{i+1:05d}.png"
-            frame_path = os.path.join(frames_dir, frame_filename)
+            frameExtractor(video_path, FRAMES_PATH, count)
             
-            if os.path.exists(frame_path):
-                frame = cv2.imread(frame_path)
-                
-                if frame is not None:
-                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    features = feature_extractor.extract_feature(gray_frame)
-                    flattened_features = features.flatten()
-                    test_features.append(flattened_features)
-                    video_names.append(video_file)
-                    
-        except Exception as e:
-            continue
-    
-    if test_features:
-        test_features_array = np.array(test_features)
-        features_file = os.path.join(output_path, "test_penultimate_layer.npy")
-        names_file = os.path.join(output_path, "test_video_names.npy")
-        np.save(features_file, test_features_array)
-        np.save(names_file, np.array(video_names))
-        return test_features_array, video_names
-    else:
-        return None, None
+            frame_file = os.path.join(FRAMES_PATH, f"{count+1:05d}.png")
+            img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)
+            
+            vector = extractor.extract_feature(img)
+            feature_vectors.append(vector.flatten())
 
+    feature_vectors = np.array(feature_vectors)
+    np.save(OUTPUT_FILE, feature_vectors)
+    print(f"Penultimate layer generated with shape {feature_vectors.shape} and saved to {OUTPUT_FILE}")
 
-def gesture_recognition(test_features, test_video_names, training_features, training_video_names, output_path):
-    def cosine_similarity(vec1, vec2):
-        dot_product = np.dot(vec1, vec2)
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-        
-        if norm1 == 0 or norm2 == 0:
-            return 0
-        return dot_product / (norm1 * norm2)
-    
-    results = []
-    
-    for i, test_feature in enumerate(test_features):
-        similarities = []
-        
-        for training_feature in training_features:
-            similarity = cosine_similarity(test_feature, training_feature)
-            similarities.append(similarity)
-        
-        max_similarity_index = np.argmax(similarities)
-        results.append(max_similarity_index)
-    
-    with open("Results.csv", 'w', newline='') as file:
-        writer = csv.writer(file)
-        for pred_label in results:
-            writer.writerow([pred_label])
-    
-    return results
+    return feature_vectors
 
-    
-if __name__ == "__main__":
-    training_videos_path = "traindata"
-    output_path = "trainoutput"
-    training_features, video_names = generate_training_penultimate_layer(training_videos_path, output_path)
-    
-    test_videos_path = "test"
-    test_output_path = "testoutput"
-    test_features, test_video_names = generate_test_penultimate_layer(test_videos_path, test_output_path)
-       
-    results = gesture_recognition(test_features, test_video_names, training_features, video_names, test_output_path)
+# =============================================================================
+# Get the penultimate layer for test data
+# =============================================================================
+# your code goes here 
+# Extract the middle frame of each gesture video
+
+def generate_test_penultimate_layer():
+
+    if not os.path.exists(TEST_FRAMES_PATH):
+        os.mkdir(TEST_FRAMES_PATH)
+
+    extractor = HandShapeFeatureExtractor.get_instance()
+    feature_vectors = []
+
+    count = 0
+    for filename in os.listdir(TEST_DATA_PATH):
+        if filename.endswith(".mp4"): 
+            count += 1
+            video_path = os.path.join(TEST_DATA_PATH, filename)
+            
+            frameExtractor(video_path, TEST_FRAMES_PATH, count)
+            
+            frame_file = os.path.join(TEST_FRAMES_PATH, f"{count+1:05d}.png")
+            img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)        
+            
+            vector = extractor.extract_feature(img)
+            feature_vectors.append(vector.flatten())
+
+    feature_vectors = np.array(feature_vectors)
+    np.save(TEST_OUTPUT_FILE, feature_vectors)
+
+    return feature_vectors
 
 # =============================================================================
 # Recognize the gesture (use cosine similarity for comparing the vectors)
 # =============================================================================
 
+def recognize_gestures(train_vectors, test_vectors, train_filenames):
 
+    results = []
 
+    for test_vec in test_vectors:
+        sims = cosine_similarity([test_vec], train_vectors)[0]
+        best_match_idx = np.argmax(sims)
+
+        gesture_name = clean_gesture_name(train_filenames[best_match_idx])
+
+        matched_label = None
+        for key in gesture_to_label:
+            if key.lower().replace(" ", "") in gesture_name.lower().replace(" ", ""):
+                matched_label = gesture_to_label[key]
+                break
+
+        if matched_label is None:
+            print(f"⚠️ Warning: No label found for {gesture_name}, defaulting to -1")
+            matched_label = -1
+
+        results.append(matched_label)
+
+    results = np.array(results)
+
+    df = pd.DataFrame(results)
+    df.to_csv("Results.csv", index=False, header=False)
+
+    return results
+
+if __name__ == "__main__":
+    train_vectors = generate_train_penultimate_layer()
+    print("Returned feature vectors shape:", train_vectors.shape)
+
+    test_vectors = generate_test_penultimate_layer()
+    print("Returned test vectors shape:", test_vectors.shape)
+
+    train_filenames = [f for f in os.listdir("traindata") if f.endswith(".mp4")]
+
+    results = recognize_gestures(train_vectors, test_vectors, train_filenames)
+    print("Final results shape:", results.shape) 

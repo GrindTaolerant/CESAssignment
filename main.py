@@ -13,6 +13,7 @@ from frameextractor import frameExtractor
 from handshape_feature_extractor import HandShapeFeatureExtractor
 from sklearn.metrics.pairwise import cosine_similarity
 
+
 ## import the handfeature extractor class
 
 # =============================================================================
@@ -55,24 +56,37 @@ def generate_train_penultimate_layer():
     extractor = HandShapeFeatureExtractor.get_instance()
     feature_vectors = []
     count = 0
+
     for filename in os.listdir(TRAIN_DATA_PATH):
-        if filename.endswith(".mp4"): 
+        if filename.endswith(".mp4"):
             count += 1
             video_path = os.path.join(TRAIN_DATA_PATH, filename)
-            
+
+            # Extract middle frame
             frameExtractor(video_path, FRAMES_PATH, count)
-            
             frame_file = os.path.join(FRAMES_PATH, f"{count+1:05d}.png")
+
+
+            if not os.path.exists(frame_file):
+                continue
+
+            # Load grayscale image
             img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)
-            
-            vector = extractor.extract_feature(img)
-            feature_vectors.append(vector.flatten())
+
+            if img is None or img.size == 0:
+                continue
+
+            try:
+                vector = extractor.extract_feature(img)
+                feature_vectors.append(vector.flatten())
+            except Exception as e:
+                continue
 
     feature_vectors = np.array(feature_vectors)
     np.save(OUTPUT_FILE, feature_vectors)
-    print(f"Penultimate layer generated with shape {feature_vectors.shape} and saved to {OUTPUT_FILE}")
 
     return feature_vectors
+
 
 # =============================================================================
 # Get the penultimate layer for test data
@@ -81,7 +95,6 @@ def generate_train_penultimate_layer():
 # Extract the middle frame of each gesture video
 
 def generate_test_penultimate_layer():
-
     if not os.path.exists(TEST_FRAMES_PATH):
         os.mkdir(TEST_FRAMES_PATH)
 
@@ -90,22 +103,34 @@ def generate_test_penultimate_layer():
 
     count = 0
     for filename in os.listdir(TEST_DATA_PATH):
-        if filename.endswith(".mp4"): 
+        if filename.endswith(".mp4"):
             count += 1
             video_path = os.path.join(TEST_DATA_PATH, filename)
-            
+
+            # Extract and save the middle frame
             frameExtractor(video_path, TEST_FRAMES_PATH, count)
-            
             frame_file = os.path.join(TEST_FRAMES_PATH, f"{count+1:05d}.png")
-            img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)        
-            
-            vector = extractor.extract_feature(img)
-            feature_vectors.append(vector.flatten())
+
+            if not os.path.exists(frame_file):
+                continue
+
+            img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)
+
+            if img is None or img.size == 0:
+                continue
+
+            # Extract CNN features
+            try:
+                vector = extractor.extract_feature(img)
+                feature_vectors.append(vector.flatten())
+            except Exception as e:
+                continue
 
     feature_vectors = np.array(feature_vectors)
     np.save(TEST_OUTPUT_FILE, feature_vectors)
 
     return feature_vectors
+
 
 # =============================================================================
 # Recognize the gesture (use cosine similarity for comparing the vectors)
@@ -128,7 +153,6 @@ def recognize_gestures(train_vectors, test_vectors, train_filenames):
                 break
 
         if matched_label is None:
-            print(f"⚠️ Warning: No label found for {gesture_name}, defaulting to -1")
             matched_label = -1
 
         results.append(matched_label)
@@ -142,12 +166,7 @@ def recognize_gestures(train_vectors, test_vectors, train_filenames):
 
 if __name__ == "__main__":
     train_vectors = generate_train_penultimate_layer()
-    print("Returned feature vectors shape:", train_vectors.shape)
-
     test_vectors = generate_test_penultimate_layer()
-    print("Returned test vectors shape:", test_vectors.shape)
 
     train_filenames = [f for f in os.listdir("traindata") if f.endswith(".mp4")]
-
     results = recognize_gestures(train_vectors, test_vectors, train_filenames)
-    print("Final results shape:", results.shape) 

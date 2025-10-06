@@ -64,7 +64,7 @@ def generate_train_penultimate_layer():
 
             # Extract middle frame
             frameExtractor(video_path, FRAMES_PATH, count)
-            frame_file = os.path.join(FRAMES_PATH, f"{count+1:05d}.png")
+            frame_file = os.path.join(FRAMES_PATH, f"{count:05d}.png")
 
 
             if not os.path.exists(frame_file):
@@ -109,7 +109,7 @@ def generate_test_penultimate_layer():
 
             # Extract and save the middle frame
             frameExtractor(video_path, TEST_FRAMES_PATH, count)
-            frame_file = os.path.join(TEST_FRAMES_PATH, f"{count+1:05d}.png")
+            frame_file = os.path.join(TEST_FRAMES_PATH, f"{count:05d}.png")
 
             if not os.path.exists(frame_file):
                 continue

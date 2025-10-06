@@ -20,4 +20,4 @@ def frameExtractor(videopath,frames_path,count):
     #print("Extracting frame..\n")
     cap.set(1,frame_no)
     ret,frame=cap.read()
-    cv2.imwrite(frames_path + "/%#05d.png" % (count+1), frame)
+    cv2.imwrite(frames_path + "/%#05d.png" % (count), frame)

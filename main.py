@@ -111,12 +111,15 @@ def generate_test_penultimate_layer():
             frameExtractor(video_path, TEST_FRAMES_PATH, count)
             frame_file = os.path.join(TEST_FRAMES_PATH, f"{count:05d}.png")
 
+
+
             if not os.path.exists(frame_file):
                 continue
 
             img = cv2.imread(frame_file, cv2.IMREAD_GRAYSCALE)
 
             if img is None or img.size == 0:
+                feature_vectors.append(np.zeros(27))
                 continue
 
             # Extract CNN features
@@ -124,6 +127,7 @@ def generate_test_penultimate_layer():
                 vector = extractor.extract_feature(img)
                 feature_vectors.append(vector.flatten())
             except Exception as e:
+                feature_vectors.append(np.zeros(27))
                 continue
 
     feature_vectors = np.array(feature_vectors)

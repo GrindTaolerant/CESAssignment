@@ -145,8 +145,14 @@ def recognize_gestures(train_vectors, test_vectors, train_filenames):
     results = []
 
     for test_vec in test_vectors:
-        sims = cosine_similarity([test_vec], train_vectors)[0]
-        best_match_idx = np.argmax(sims)
+        ##sims = cosine_similarity([test_vec], train_vectors)[0]
+        tf_sims = tf.keras.losses.cosine_similarity(
+            tf.convert_to_tensor([test_vec], dtype=tf.float32),
+            tf.convert_to_tensor(train_vectors, dtype=tf.float32),
+            axis=1
+        ).numpy()
+
+        best_match_idx = np.argmax(tf_sims)
 
         gesture_name = clean_gesture_name(train_filenames[best_match_idx])
 

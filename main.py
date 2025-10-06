@@ -43,10 +43,9 @@ gesture_to_label = {
 }
 
 def clean_gesture_name(filename):
-    base = os.path.splitext(filename)[0] 
-    if base.startswith("H-"):
-        base = base[2:]  
-    return base
+    base = os.path.splitext(filename)[0]  # remove .mp4
+    gesture_name = base.split("_")[0].strip()
+    return gesture_name
 
 
 def generate_train_penultimate_layer():
